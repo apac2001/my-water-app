@@ -13,7 +13,6 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 def load_cloud_data():
     try:
         df = conn.read(spreadsheet=URL, ttl=0)
-        # 防錯：如果雲端還沒這欄，自動補上空的
         if "使用者" not in df.columns:
             df["使用者"] = "老公" 
         return df
@@ -24,33 +23,58 @@ def load_cloud_data():
 st.title("💧 雙人雲端喝水系統")
 user = st.radio("請選擇使用者：", ["老公", "老婆"], horizontal=True)
 
-# 當切換使用者時，強制標記為未初始化
-if 'last_user' not in st.session_state or st.session_state.last_user != user:
+# 追蹤使用者切換邏輯
+if 'last_user' not in st.session_state:
+    st.session_state.last_user = user
+
+if st.session_state.last_user != user:
     st.session_state.last_user = user
     st.session_state.initialized = False
+    # 清除舊使用者的輸入框暫存
+    if f"weight_input_{user}" in st.session_state:
+        del st.session_state[f"weight_input_{user}"]
 
-# --- 4. 初始化：根據身分讀取進度 ---
+# --- 4. 初始化：根據身分讀取進度與體重 ---
 today_str = datetime.now().strftime("%Y-%m-%d")
 
 if not st.session_state.get('initialized', False):
     cloud_df = load_cloud_data()
-    # 安全篩選
-    user_today = cloud_df[(cloud_df["日期"] == today_str) & (cloud_df["使用者"] == user)]
+    user_records = cloud_df[cloud_df["使用者"] == user]
     
+    # 找今天的喝水進度
+    user_today = user_records[user_records["日期"] == today_str]
     if not user_today.empty:
         st.session_state.count = int(user_today.iloc[-1]["實際喝水"])
     else:
         st.session_state.count = 0
+        
+    # 找「最後一次同步」的體重
+    if not user_records.empty:
+        st.session_state.current_weight = float(user_records.iloc[-1]["體重"])
+    else:
+        # 如果雲端沒紀錄，老婆預設 50.0，老公預設 90.0
+        st.session_state.current_weight = 90.0 if user == "老公" else 50.0
+        
     st.session_state.initialized = True
 
 # --- 5. 個人狀態設定 ---
-default_weight = 90.0 if user == "老公" else 50.0
-
 st.subheader(f"📍 {user} 的個人狀態")
-weight = st.number_input(f"{user} 今日體重 (kg)", value=default_weight, step=0.1, key=f"weight_{user}")
+
+# 限制小數點後一位 format="%.1f"
+weight = st.number_input(
+    f"{user} 今日體重 (kg)", 
+    value=st.session_state.current_weight, 
+    min_value=10.0, 
+    max_value=200.0, 
+    step=0.1, 
+    format="%.1f",
+    key=f"weight_input_{user}"
+)
+
 goal = int(weight * 45)
 st.info(f"💡 {user} 的建議飲水量：{goal} cc")
 
+# 喝水進度
 display_percent = round((st.session_state.count / goal) * 100, 1) if goal > 0 else 0
 st.progress(min(st.session_state.count / goal, 1.0) if goal > 0 else 0)
 st.write(f"### 目前已喝：{st.session_state.count} cc ({display_percent}%)")
@@ -99,8 +123,6 @@ if st.button(f"🚀 同步 {user} 的紀錄到雲端", use_container_width=True)
             "達成率": round(st.session_state.count / goal, 4) if goal > 0 else 0
         }
         existing_data = load_cloud_data()
-        
-        # 移除當天、該使用者的舊紀錄
         if not existing_data.empty:
             mask = (existing_data["日期"] == today_str) & (existing_data["使用者"] == user)
             existing_data = existing_data[~mask]
@@ -108,12 +130,12 @@ if st.button(f"🚀 同步 {user} 的紀錄到雲端", use_container_width=True)
         updated_data = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
         conn.update(spreadsheet=URL, data=updated_data)
         st.success(f"{user} 的紀錄同步成功！🎈")
+        st.session_state.current_weight = weight
 
 # --- 9. 雲端歷史紀錄 ---
 st.divider()
 st.subheader("📊 雲端歷史紀錄")
 cloud_history = load_cloud_data()
-
 if not cloud_history.empty:
     cloud_history["達成率"] = pd.to_numeric(cloud_history["達成率"], errors='coerce') * 100
     st.data_editor(
@@ -123,3 +145,6 @@ if not cloud_history.empty:
         },
         use_container_width=True, hide_index=True, disabled=True
     )
+
+if st.button("🔄 刷新雲端資料"):
+    st.rerun()
