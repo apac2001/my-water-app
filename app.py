@@ -39,30 +39,35 @@ display_percent = round((st.session_state.count / goal) * 100, 1) if goal > 0 el
 st.progress(min(st.session_state.count / goal, 1.0) if goal > 0 else 0)
 st.write(f"### 目前已喝：{st.session_state.count} cc ({display_percent}%)")
 
-# --- 5. 按鈕顏色 CSS 定義 ---
+# --- 5. 按鈕顏色 CSS 定義 (修正語法錯誤) ---
 st.markdown("""
 <style>
-/* 淺藍色按鈕 (350cc) */
-div.stButton > button:first-child {
-    background-color: #ADD8E6 !important;
+/* 350cc 淺藍色 */
+div.stColumn:nth-child(1) > div > div > div > button {
+    background-color: #B0E0E6 !important;
     color: black !important;
+    border: none !important;
 }
-/* 深藍色按鈕 (500cc) */
+/* 500cc 深藍色 */
 div.stColumn:nth-child(2) > div > div > div > button {
     background-color: #4682B4 !important;
     color: white !important;
+    border: none !important;
 }
-/* 黃色按鈕 (自定義) */
+/* 自定義 黃色 */
 div.stColumn:nth-child(3) > div > div > div > button {
     background-color: #FFD700 !important;
     color: black !important;
+    border: none !important;
 }
-/* 重置按鈕 (維持預設或灰色) */
+/* 重置按鈕 灰色 */
 div.stColumn:nth-child(4) > div > div > div > button {
-    background-color: #F0F2F6 !important;
+    background-color: #E0E0E0 !important;
+    color: black !important;
+    border: none !important;
 }
 </style>
-""", unsafe_allow_value=True)
+""", unsafe_allow_html=True) # <--- 修正這裡：改為 html
 
 # --- 6. 加水區 ---
 st.divider()
@@ -86,7 +91,7 @@ with c4:
         st.session_state.count = 0
         st.rerun()
 
-# --- 7. 儲存與歷史紀錄 (維持之前的功能) ---
+# --- 7. 儲存與歷史紀錄 ---
 if st.button("🚀 同步到 Google 試算表", use_container_width=True):
     with st.spinner('同步中...'):
         new_row = {
@@ -107,6 +112,7 @@ st.divider()
 st.subheader("📊 雲端歷史紀錄")
 cloud_history = load_cloud_data()
 if not cloud_history.empty:
+    # 強制換算百分比顯示
     cloud_history["達成率"] = pd.to_numeric(cloud_history["達成率"], errors='coerce') * 100
     st.data_editor(
         cloud_history,
