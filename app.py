@@ -39,35 +39,15 @@ display_percent = round((st.session_state.count / goal) * 100, 1) if goal > 0 el
 st.progress(min(st.session_state.count / goal, 1.0) if goal > 0 else 0)
 st.write(f"### 目前已喝：{st.session_state.count} cc ({display_percent}%)")
 
-# --- 5. 按鈕顏色 CSS 定義 (修正語法錯誤) ---
+# --- 5. 按鈕顏色 CSS 定義 ---
 st.markdown("""
 <style>
-/* 350cc 淺藍色 */
-div.stColumn:nth-child(1) > div > div > div > button {
-    background-color: #B0E0E6 !important;
-    color: black !important;
-    border: none !important;
-}
-/* 500cc 深藍色 */
-div.stColumn:nth-child(2) > div > div > div > button {
-    background-color: #4682B4 !important;
-    color: white !important;
-    border: none !important;
-}
-/* 自定義 黃色 */
-div.stColumn:nth-child(3) > div > div > div > button {
-    background-color: #FFD700 !important;
-    color: black !important;
-    border: none !important;
-}
-/* 重置按鈕 灰色 */
-div.stColumn:nth-child(4) > div > div > div > button {
-    background-color: #E0E0E0 !important;
-    color: black !important;
-    border: none !important;
-}
+div.stColumn:nth-child(1) > div > div > div > button { background-color: #B0E0E6 !important; color: black !important; border: none !important; }
+div.stColumn:nth-child(2) > div > div > div > button { background-color: #4682B4 !important; color: white !important; border: none !important; }
+div.stColumn:nth-child(3) > div > div > div > button { background-color: #FFD700 !important; color: black !important; border: none !important; }
+div.stColumn:nth-child(4) > div > div > div > button { background-color: #E0E0E0 !important; color: black !important; border: none !important; }
 </style>
-""", unsafe_allow_html=True) # <--- 修正這裡：改為 html
+""", unsafe_allow_html=True)
 
 # --- 6. 加水區 ---
 st.divider()
@@ -83,7 +63,8 @@ with c2:
         st.session_state.count += 500
         st.rerun()
 with c3:
-    if st.button(f"➕{custom_water}"): 
+    # 關鍵修正：加上 key="custom_btn"，避免名稱重複跳錯
+    if st.button(f"➕{custom_water}", key="custom_btn"): 
         st.session_state.count += custom_water
         st.rerun()
 with c4:
@@ -112,7 +93,6 @@ st.divider()
 st.subheader("📊 雲端歷史紀錄")
 cloud_history = load_cloud_data()
 if not cloud_history.empty:
-    # 強制換算百分比顯示
     cloud_history["達成率"] = pd.to_numeric(cloud_history["達成率"], errors='coerce') * 100
     st.data_editor(
         cloud_history,
