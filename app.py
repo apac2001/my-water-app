@@ -100,7 +100,7 @@ cloud_history = load_cloud_data()
 st.data_editor(
     cloud_history,
     column_config={
-        "達成率": st.column_config.NumberColumn(
+        "達成率": st.column_config.ProgressColumn(
             "達成率",
             help="每日喝水達成率",
             format="%.1f%%", # 這一行會自動把 0.619 轉成 61.9%
@@ -110,5 +110,6 @@ st.data_editor(
     hide_index=True,
     disabled=True # 設為 True 避免在表格內誤刪資料
 )
+
 
 
