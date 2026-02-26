@@ -93,4 +93,21 @@ if st.button("🔄 刷新雲端資料"):
 
 cloud_history = load_cloud_data()
 st.dataframe(cloud_history, use_container_width=True)
+# 修改後的顯示方式：
+cloud_history = load_cloud_data()
+
+# 使用 column_config 來格式化顯示百分比
+st.data_editor(
+    cloud_history,
+    column_config={
+        "達成率": st.column_config.NumberColumn(
+            "達成率",
+            help="每日喝水達成率",
+            format="%.1f%%", # 這一行會自動把 0.619 轉成 61.9%
+        )
+    },
+    use_container_width=True,
+    hide_index=True,
+    disabled=True # 設為 True 避免在表格內誤刪資料
+)
 
