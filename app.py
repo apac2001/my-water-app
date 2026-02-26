@@ -86,10 +86,30 @@ if st.button(f"🚀 同步 {user} 紀錄", use_container_width=True):
         st.success("同步成功！")
         st.session_state.current_weight = weight
 
-# --- 8. 📊 週報表統計圖 (指定藍紅配色) ---
+# --- 8. 📊 雲端歷史紀錄 (移動到上方並預設展開) ---
+st.divider()
+st.subheader("📊 雲端歷史紀錄")
+all_data = load_cloud_data()
+
+if not all_data.empty:
+    all_data_display = all_data.copy()
+    # 確保達成率顯示為百分比
+    all_data_display["達成率"] = pd.to_numeric(all_data_display["達成率"], errors='coerce') * 100
+    st.data_editor(
+        all_data_display, 
+        column_config={
+            "達成率": st.column_config.ProgressColumn("達成率", format="%.1f%%", min_value=0, max_value=100),
+        }, 
+        use_container_width=True, 
+        hide_index=True, 
+        disabled=True
+    )
+else:
+    st.write("目前尚無雲端紀錄。")
+
+# --- 9. 📈 最近 7 天飲水趨勢 (移動到下方) ---
 st.divider()
 st.subheader("📈 最近 7 天飲水趨勢")
-all_data = load_cloud_data()
 
 if not all_data.empty:
     all_data["日期"] = pd.to_datetime(all_data["日期"])
@@ -97,19 +117,12 @@ if not all_data.empty:
     recent_df = all_data[all_data["日期"] >= seven_days_ago].sort_values("日期")
     
     if not recent_df.empty:
-        # 關鍵修正：使用 color_discrete_map 指定顏色
         fig = px.line(recent_df, x="日期", y="實際喝水", color="使用者",
                       markers=True, title="老公 vs 老婆 飲水競賽",
                       labels={"實際喝水": "飲水量 (cc)"},
                       color_discrete_map={"老公": "#0000FF", "老婆": "#FF0000"})
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.write("尚無足夠數據生成圖表。")
-
-# --- 9. 歷史清單 ---
-with st.expander("查看所有歷史紀錄"):
-    all_data_display = all_data.copy()
-    all_data_display["達成率"] = pd.to_numeric(all_data_display["達成率"], errors='coerce') * 100
-    st.data_editor(all_data_display, column_config={"達成率": st.column_config.ProgressColumn("達成率", format="%.1f%%", min_value=0, max_value=100)}, use_container_width=True, hide_index=True, disabled=True)
+        st.write("數據累積中，請同步資料後查看圖表。")
 
 if st.button("🔄 刷新雲端資料"): st.rerun()
