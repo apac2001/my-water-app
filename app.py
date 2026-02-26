@@ -13,7 +13,6 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_cloud_data():
     try:
-        # ttl=0 確保每次都抓最新資料
         return conn.read(spreadsheet=URL, ttl=0)
     except:
         return pd.DataFrame(columns=["日期", "體重", "目標水量", "實際喝水", "達成率"])
@@ -36,28 +35,36 @@ weight = st.number_input("今日體重 (kg)", value=90.0, step=0.1)
 goal = int(weight * 45)
 st.info(f"💡 建議飲水量：{goal} cc")
 
+# 喝水進度計算
 display_percent = round((st.session_state.count / goal) * 100, 1) if goal > 0 else 0
 st.progress(min(st.session_state.count / goal, 1.0) if goal > 0 else 0)
 st.write(f"### 目前已喝：{st.session_state.count} cc ({display_percent}%)")
 
-c1, c2, c3 = st.columns(3)
+# --- 5. 加水區 (補回自定義功能) ---
+st.divider()
+custom_water = st.number_input("輸入自定義容量 (cc)", value=300, step=50)
+
+c1, c2, c3, c4 = st.columns(4)
 with c1:
-    if st.button("➕250cc"): 
+    if st.button("➕250"): 
         st.session_state.count += 250
         st.rerun()
 with c2:
-    if st.button("➕500cc"): 
+    if st.button("➕500"): 
         st.session_state.count += 500
         st.rerun()
 with c3:
+    if st.button(f"➕{custom_water}"): 
+        st.session_state.count += custom_water
+        st.rerun()
+with c4:
     if st.button("🧹重置"): 
         st.session_state.count = 0
         st.rerun()
 
-# --- 5. 儲存到雲端 ---
-if st.button("🚀 同步到 Google 試算表"):
+# --- 6. 儲存到雲端 ---
+if st.button("🚀 同步到 Google 試算表", use_container_width=True):
     with st.spinner('同步中...'):
-        # 存入雲端時維持小數，方便未來做圖表統計
         new_row = {
             "日期": today_str,
             "體重": weight,
@@ -72,17 +79,15 @@ if st.button("🚀 同步到 Google 試算表"):
         conn.update(spreadsheet=URL, data=updated_data)
         st.success("同步成功！🎈")
 
-# --- 6. 雲端歷史紀錄 (手動換算 100% 邏輯) ---
+# --- 7. 雲端歷史紀錄 ---
 st.divider()
 st.subheader("📊 雲端歷史紀錄")
 
 cloud_history = load_cloud_data()
 
 if not cloud_history.empty:
-    # --- 強制換算步驟 ---
-    # 1. 確保數據是數字
     cloud_history["達成率"] = pd.to_numeric(cloud_history["達成率"], errors='coerce')
-    # 2. 物理乘以 100 (讓 0.741 變成 74.1)
+    # 維持物理換算顯示，解決 0.6% Bug
     cloud_history["達成率"] = cloud_history["達成率"] * 100
     
     st.data_editor(
@@ -90,12 +95,10 @@ if not cloud_history.empty:
         column_config={
             "達成率": st.column_config.ProgressColumn(
                 "達成率",
-                help="每日喝水達成率",
                 format="%.1f%%",
                 min_value=0,
-                max_value=100, # 因為上面乘了 100，所以標尺上限改為 100
+                max_value=100,
             ),
-            "日期": st.column_config.TextColumn("日期"),
         },
         use_container_width=True,
         hide_index=True,
