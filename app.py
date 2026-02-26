@@ -92,7 +92,7 @@ if st.button("🔄 刷新雲端資料"):
     st.rerun()
 
 cloud_history = load_cloud_data()
-st.dataframe(cloud_history, use_container_width=True)
+
 # 修改後的顯示方式：
 cloud_history = load_cloud_data()
 
@@ -110,4 +110,5 @@ st.data_editor(
     hide_index=True,
     disabled=True # 設為 True 避免在表格內誤刪資料
 )
+
 
