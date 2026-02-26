@@ -105,14 +105,13 @@ st.data_editor(
             help="每日喝水達成率",
             format="%.1f%%",
             min_value=0,
-            max_value=1,
+            max_value=1
         )
     },
     use_container_width=True,
     hide_index=True,
     disabled=True
 )
-
 
 
 
