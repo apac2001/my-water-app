@@ -2,7 +2,7 @@ import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 from datetime import datetime, timedelta
-import plotly.express as px  # 用來畫漂亮的圖表
+import plotly.express as px
 
 # --- 1. 設定網頁 ---
 st.set_page_config(page_title="雙人雲端喝水神器", page_icon="💧", layout="centered")
@@ -44,7 +44,6 @@ st.subheader(f"📍 {user} 的個人狀態")
 weight = st.number_input(f"{user} 今日體重 (kg)", value=st.session_state.current_weight, step=0.1, format="%.1f", key=f"w_{user}")
 goal = int(weight * 45)
 
-# 勳章邏輯
 percent_val = (st.session_state.count / goal) if goal > 0 else 0
 if percent_val >= 1.0:
     st.success(f"🏅 恭喜！{user} 已達成今日目標！你是飲水達人！")
@@ -55,7 +54,7 @@ else:
 st.progress(min(percent_val, 1.0))
 st.write(f"### 目前已喝：{st.session_state.count} cc ({round(percent_val*100, 1)}%)")
 
-# --- 6. 按鈕 CSS ---
+# --- 6. 按鈕顏色 CSS ---
 st.markdown("""
 <style>
 div.stColumn:nth-child(1) > div > div > div > button { background-color: #B0E0E6 !important; color: black !important; }
@@ -87,7 +86,7 @@ if st.button(f"🚀 同步 {user} 紀錄", use_container_width=True):
         st.success("同步成功！")
         st.session_state.current_weight = weight
 
-# --- 8. 📊 週報表統計圖 ---
+# --- 8. 📊 週報表統計圖 (指定藍紅配色) ---
 st.divider()
 st.subheader("📈 最近 7 天飲水趨勢")
 all_data = load_cloud_data()
@@ -98,17 +97,19 @@ if not all_data.empty:
     recent_df = all_data[all_data["日期"] >= seven_days_ago].sort_values("日期")
     
     if not recent_df.empty:
-        # 畫出折線圖
+        # 關鍵修正：使用 color_discrete_map 指定顏色
         fig = px.line(recent_df, x="日期", y="實際喝水", color="使用者",
                       markers=True, title="老公 vs 老婆 飲水競賽",
-                      labels={"實際喝水": "飲水量 (cc)"})
+                      labels={"實際喝水": "飲水量 (cc)"},
+                      color_discrete_map={"老公": "#0000FF", "老婆": "#FF0000"})
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.write("尚無足夠數據生成圖表。")
 
 # --- 9. 歷史清單 ---
 with st.expander("查看所有歷史紀錄"):
-    all_data["達成率"] = pd.to_numeric(all_data["達成率"], errors='coerce') * 100
-    st.data_editor(all_data, column_config={"達成率": st.column_config.ProgressColumn("達成率", format="%.1f%%", min_value=0, max_value=100)}, use_container_width=True, hide_index=True, disabled=True)
+    all_data_display = all_data.copy()
+    all_data_display["達成率"] = pd.to_numeric(all_data_display["達成率"], errors='coerce') * 100
+    st.data_editor(all_data_display, column_config={"達成率": st.column_config.ProgressColumn("達成率", format="%.1f%%", min_value=0, max_value=100)}, use_container_width=True, hide_index=True, disabled=True)
 
 if st.button("🔄 刷新雲端資料"): st.rerun()
