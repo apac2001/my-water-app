@@ -123,16 +123,34 @@ if not all_data.empty:
     all_data_display["達成率"] = pd.to_numeric(all_data_display["達成率"], errors='coerce') * 100
     st.data_editor(all_data_display, column_config={"達成率": st.column_config.ProgressColumn("達成率", format="%.1f%%", min_value=0, max_value=100)}, use_container_width=True, hide_index=True, disabled=True)
 
-# --- 9. 趨勢圖 ---
+# --- 9. 趨勢圖 (優化日期顯示) ---
 st.divider()
 st.subheader("📈 最近 7 天飲水趨勢")
 if not all_data.empty:
     all_data["日期"] = pd.to_datetime(all_data["日期"])
     seven_days_ago = datetime.now() - timedelta(days=7)
     recent_df = all_data[all_data["日期"] >= seven_days_ago].sort_values("日期")
+    
     if not recent_df.empty:
-        fig = px.line(recent_df, x="日期", y="實際喝水", color="使用者", markers=True, color_discrete_map={"老公": "#0000FF", "老婆": "#FF0000"})
+        fig = px.line(
+            recent_df, 
+            x="日期", 
+            y="實際喝水", 
+            color="使用者", 
+            markers=True, 
+            color_discrete_map={"老公": "#0000FF", "老婆": "#FF0000"},
+            labels={"實際喝水": "飲水量 (cc)", "日期": "日期"}
+        )
+        
+        # --- 關鍵修正：強制 X 軸格式 ---
+        fig.update_xaxes(
+            dtick="D1",              # 強制每一天顯示一個刻度
+            tickformat="%m/%d",      # 只顯示 月/日 (例如 02/26)
+            tickangle=0              # 讓文字保持水平，不轉彎
+        )
+        
         st.plotly_chart(fig, use_container_width=True)
 
 if st.button("🔄 刷新雲端資料"): st.rerun()
+
 
