@@ -9,8 +9,6 @@ st.set_page_config(page_title="雙人雲端喝水神器", page_icon="💧", layo
 
 # --- 2. 視覺美化 CSS (含全家福背景與毛玻璃效果) ---
 bg_img_url = "https://lh3.googleusercontent.com/pw/AP1GczM21nw2pYHNKMpCEMItkSgf21mOa_BrdsGYgYJTELbETtU2m_70AbnBFdvASYmiT1tYzN0WRcJnvkKl9nE_SJLADdVP_ACdx56PTJuRR74N5wSFtF8I=w2400"
-
-st.markdown(f"""
 <style>
 /* 全網頁背景設定 */
 .stApp {{
@@ -97,5 +95,41 @@ custom_water = st.number_input("輸入自定義容量 (cc)", value=300, step=50)
 c1, c2, c3, c4 = st.columns(4)
 with c1: 
     if st.button("➕350"): st.session_state.count += 350; st.rerun()
+with c2: 
+    if st.button("➕500"): st.session_state.count += 500; st.rerun()
+with c3: 
+    if st.button(f"➕{custom_water}", key="c_btn"): st.session_state.count += custom_water; st.rerun()
+with c4: 
+    if st.button("🧹重置"): st.session_state.count = 0; st.rerun()
 
+if st.button(f"🚀 同步 {user} 紀錄到雲端", use_container_width=True):
+    with st.spinner('同步中...'):
+        new_row = {"日期": today_str, "使用者": user, "體重": weight, "目標水量": goal, "實際喝水": st.session_state.count, "達成率": round(st.session_state.count/goal, 4) if goal > 0 else 0}
+        df = load_cloud_data()
+        df = df[~((df["日期"] == today_str) & (df["使用者"] == user))]
+        updated_df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+        conn.update(spreadsheet=URL, data=updated_df)
+        st.success("同步成功！🎈")
+        st.session_state.current_weight = weight
 
+# --- 8. 歷史紀錄 ---
+st.divider()
+st.subheader("📊 雲端歷史紀錄")
+all_data = load_cloud_data()
+if not all_data.empty:
+    all_data_display = all_data.copy()
+    all_data_display["達成率"] = pd.to_numeric(all_data_display["達成率"], errors='coerce') * 100
+    st.data_editor(all_data_display, column_config={"達成率": st.column_config.ProgressColumn("達成率", format="%.1f%%", min_value=0, max_value=100)}, use_container_width=True, hide_index=True, disabled=True)
+
+# --- 9. 趨勢圖 ---
+st.divider()
+st.subheader("📈 最近 7 天飲水趨勢")
+if not all_data.empty:
+    all_data["日期"] = pd.to_datetime(all_data["日期"])
+    seven_days_ago = datetime.now() - timedelta(days=7)
+    recent_df = all_data[all_data["日期"] >= seven_days_ago].sort_values("日期")
+    if not recent_df.empty:
+        fig = px.line(recent_df, x="日期", y="實際喝水", color="使用者", markers=True, color_discrete_map={"老公": "#0000FF", "老婆": "#FF0000"})
+        st.plotly_chart(fig, use_container_width=True)
+
+if st.button("🔄 刷新雲端資料"): st.rerun()
