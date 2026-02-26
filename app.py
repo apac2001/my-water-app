@@ -35,19 +35,43 @@ weight = st.number_input("今日體重 (kg)", value=90.0, step=0.1)
 goal = int(weight * 45)
 st.info(f"💡 建議飲水量：{goal} cc")
 
-# 喝水進度計算
 display_percent = round((st.session_state.count / goal) * 100, 1) if goal > 0 else 0
 st.progress(min(st.session_state.count / goal, 1.0) if goal > 0 else 0)
 st.write(f"### 目前已喝：{st.session_state.count} cc ({display_percent}%)")
 
-# --- 5. 加水區 (補回自定義功能) ---
+# --- 5. 按鈕顏色 CSS 定義 ---
+st.markdown("""
+<style>
+/* 淺藍色按鈕 (350cc) */
+div.stButton > button:first-child {
+    background-color: #ADD8E6 !important;
+    color: black !important;
+}
+/* 深藍色按鈕 (500cc) */
+div.stColumn:nth-child(2) > div > div > div > button {
+    background-color: #4682B4 !important;
+    color: white !important;
+}
+/* 黃色按鈕 (自定義) */
+div.stColumn:nth-child(3) > div > div > div > button {
+    background-color: #FFD700 !important;
+    color: black !important;
+}
+/* 重置按鈕 (維持預設或灰色) */
+div.stColumn:nth-child(4) > div > div > div > button {
+    background-color: #F0F2F6 !important;
+}
+</style>
+""", unsafe_allow_value=True)
+
+# --- 6. 加水區 ---
 st.divider()
 custom_water = st.number_input("輸入自定義容量 (cc)", value=300, step=50)
 
 c1, c2, c3, c4 = st.columns(4)
 with c1:
-    if st.button("➕250"): 
-        st.session_state.count += 250
+    if st.button("➕350"): 
+        st.session_state.count += 350
         st.rerun()
 with c2:
     if st.button("➕500"): 
@@ -62,7 +86,7 @@ with c4:
         st.session_state.count = 0
         st.rerun()
 
-# --- 6. 儲存到雲端 ---
+# --- 7. 儲存與歷史紀錄 (維持之前的功能) ---
 if st.button("🚀 同步到 Google 試算表", use_container_width=True):
     with st.spinner('同步中...'):
         new_row = {
@@ -79,33 +103,18 @@ if st.button("🚀 同步到 Google 試算表", use_container_width=True):
         conn.update(spreadsheet=URL, data=updated_data)
         st.success("同步成功！🎈")
 
-# --- 7. 雲端歷史紀錄 ---
 st.divider()
 st.subheader("📊 雲端歷史紀錄")
-
 cloud_history = load_cloud_data()
-
 if not cloud_history.empty:
-    cloud_history["達成率"] = pd.to_numeric(cloud_history["達成率"], errors='coerce')
-    # 維持物理換算顯示，解決 0.6% Bug
-    cloud_history["達成率"] = cloud_history["達成率"] * 100
-    
+    cloud_history["達成率"] = pd.to_numeric(cloud_history["達成率"], errors='coerce') * 100
     st.data_editor(
         cloud_history,
         column_config={
-            "達成率": st.column_config.ProgressColumn(
-                "達成率",
-                format="%.1f%%",
-                min_value=0,
-                max_value=100,
-            ),
+            "達成率": st.column_config.ProgressColumn("達成率", format="%.1f%%", min_value=0, max_value=100),
         },
-        use_container_width=True,
-        hide_index=True,
-        disabled=True
+        use_container_width=True, hide_index=True, disabled=True
     )
-else:
-    st.write("目前尚無雲端紀錄。")
 
 if st.button("🔄 刷新雲端資料"):
     st.rerun()
