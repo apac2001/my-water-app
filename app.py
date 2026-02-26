@@ -8,7 +8,9 @@ import plotly.express as px
 st.set_page_config(page_title="雙人雲端喝水神器", page_icon="💧", layout="centered")
 
 # --- 2. 視覺美化 CSS (含全家福背景與毛玻璃效果) ---
-bg_img_url = "https://lh3.googleusercontent.com/pw/AP1GczM21nw2pYHNKMpCEMItkSgf21mOa_BrdsGYgYJTELbETtU2m_70AbnBFdvASYmiT1tYzN0WRcJnvkKl9nE_SJLADdVP_ACdx56PTJuRR74N5wSFtF8I=w2400"
+bg_img_url = "https://lh3.googleusercontent.com/pw/AP1GczOOvRy1zWeTPq3IZ-y7FL2H2Y9M8B88fxFYnKeMhar1BetPOZjnmgG5KpNKwLcpJpA7ZNOnPQtMmXRYrV4QlJYrMetiyMov9otTyxUh8Cav8kv9bPFF=w2400"
+
+st.markdown(f"""
 <style>
 /* 全網頁背景設定 */
 .stApp {{
