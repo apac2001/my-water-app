@@ -9,7 +9,7 @@ st.title("☁️ 雲端同步喝水系統")
 
 # --- 連結 Google Sheets ---
 # 請將下方的網址替換成你剛剛複製的 Google 試算表網址
-URL = https://docs.google.com/spreadsheets/d/13xNItqw0bSwdtc3__XH4WM3pNTeHdDYcd8DlsTVUHD8/edit?gid=0#gid=0
+URL = "https://docs.google.com/spreadsheets/d/13xNItqw0bSwdtc3__XH4WM3pNTeHdDYcd8DlsTVUHD8/edit?gid=0#gid=0"
 
 conn = st.connection("gsheets", type=GSheetsConnection)
 
@@ -68,4 +68,5 @@ if st.button("🚀 同步到 Google 試算表"):
 st.divider()
 st.subheader("📊 雲端歷史紀錄")
 cloud_history = load_cloud_data()
+
 st.dataframe(cloud_history)
