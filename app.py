@@ -37,7 +37,7 @@ if 'initialized' not in st.session_state:
 
 # --- 介面邏輯 ---
 st.subheader("📍 個人狀態")
-weight = st.number_input("今日體重 (kg)", value=70.0, step=0.1)
+weight = st.number_input("今日體重 (kg)", value=90.0, step=0.1)
 goal = int(weight * 45)
 st.info(f"💡 建議飲水量：{goal} cc")
 
@@ -93,3 +93,4 @@ if st.button("🔄 刷新雲端資料"):
 
 cloud_history = load_cloud_data()
 st.dataframe(cloud_history, use_container_width=True)
+
