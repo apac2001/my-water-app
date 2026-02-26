@@ -8,7 +8,7 @@ import plotly.express as px
 st.set_page_config(page_title="雙人雲端喝水神器", page_icon="💧", layout="centered")
 
 # --- 2. 視覺美化 CSS (含全家福背景與毛玻璃效果) ---
-g_img_url = "https://lh3.googleusercontent.com/pw/AP1GczM21nw2pYHNKMpCEMItkSgf21mOa_BrdsGYgYJTELbETtU2m_70AbnBFdvASYmiT1tYzN0WRcJnvkKl9nE_SJLADdVP_ACdx56PTJuRR74N5wSFtF8I=w2400"
+bg_img_url = "https://lh3.googleusercontent.com/pw/AP1GczM21nw2pYHNKMpCEMItkSgf21mOa_BrdsGYgYJTELbETtU2m_70AbnBFdvASYmiT1tYzN0WRcJnvkKl9nE_SJLADdVP_ACdx56PTJuRR74N5wSFtF8I=w2400"
 
 st.markdown(f"""
 <style>
@@ -97,4 +97,5 @@ custom_water = st.number_input("輸入自定義容量 (cc)", value=300, step=50)
 c1, c2, c3, c4 = st.columns(4)
 with c1: 
     if st.button("➕350"): st.session_state.count += 350; st.rerun()
+
 
