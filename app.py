@@ -7,27 +7,14 @@ import plotly.express as px
 # --- 1. 設定網頁與背景 ---
 st.set_page_config(page_title="家庭健康管理神器", page_icon="❤️", layout="centered")
 
-# 使用你提供的新照片網址
+# 背景照片
 bg_img_url = "https://lh3.googleusercontent.com/pw/AP1GczPQAeEyydw0HzXGq3cyXWggu8_yrupGiYDBYBhcYhtvubDIdpS5pG7NNYc1R59y57HU6SspjCl4BGwNxdTkWxni3jrDHqcbFNaysEdDR8ntrB2vmCGm=w2400"
 
 st.markdown(f"""
 <style>
-.stApp {{
-    background-image: url("{bg_img_url}");
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-}}
-.main .block-container {{
-    background-color: rgba(255, 255, 255, 0.9); 
-    padding: 30px;
-    border-radius: 25px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-}}
-/* 側邊欄樣式優化 */
-[data-testid="stSidebar"] {{
-    background-color: rgba(255, 255, 255, 0.8);
-}}
+.stApp {{ background-image: url("{bg_img_url}"); background-size: cover; background-position: center; background-attachment: fixed; }}
+.main .block-container {{ background-color: rgba(255, 255, 255, 0.9); padding: 30px; border-radius: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }}
+[data-testid="stSidebar"] {{ background-color: rgba(255, 255, 255, 0.8); }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -37,7 +24,11 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_data():
     try:
-        return conn.read(spreadsheet=URL, ttl=0)
+        df = conn.read(spreadsheet=URL, ttl=0)
+        # 自動補齊欄位，防止噴錯
+        for col in ["類別", "使用者", "日期", "實際喝水", "達成率", "高壓", "低壓", "時間段"]:
+            if col not in df.columns: df[col] = None
+        return df
     except:
         return pd.DataFrame()
 
@@ -48,40 +39,31 @@ with st.sidebar:
     st.divider()
     user = st.radio("選擇使用者：", ["老公", "老婆"], horizontal=True)
 
-# --- 4. 邏輯判斷：進入不同頁面 ---
-
 # ==================== 頁面 A：喝水紀錄 ====================
 if page == "💧 喝水紀錄":
     st.title(f"💧 {user} 喝水追蹤")
-    
-    # 初始化喝水資料
     today_str = datetime.now().strftime("%Y-%m-%d")
-    if 'water_init' not in st.session_state or st.session_state.get('last_user_w') != user:
-        df = load_data()
-        if not df.empty and "實際喝水" in df.columns:
-            user_today = df[(df["日期"] == today_str) & (df["使用者"] == user) & (df.get("類別") == "喝水")]
-            st.session_state.water_count = int(user_today.iloc[-1]["實際喝水"]) if not user_today.empty else 0
-            user_last = df[(df["使用者"] == user) & (df.get("類別") == "喝水")]
-            st.session_state.w_weight = float(user_last.iloc[-1]["體重"]) if not user_last.empty else (90.0 if user == "老公" else 50.0)
-        else:
-            st.session_state.water_count = 0
-            st.session_state.w_weight = 90.0 if user == "老公" else 50.0
+    
+    # 讀取資料並更新 session_state
+    df = load_data()
+    user_today = df[(df["日期"] == today_str) & (df["使用者"] == user) & (df["類別"] == "喝水")]
+    
+    if 'water_count' not in st.session_state or st.session_state.get('last_user_w') != user:
+        st.session_state.water_count = int(user_today.iloc[-1]["實際喝水"]) if not user_today.empty else 0
         st.session_state.last_user_w = user
-        st.session_state.water_init = True
 
-    # 介面顯示
-    weight = st.number_input("今日體重 (kg)", value=st.session_state.w_weight, step=0.1, format="%.1f")
+    # 體重與目標
+    user_records = df[(df["使用者"] == user) & (df["類別"] == "喝水")]
+    last_weight = float(user_records.iloc[-1]["體重"]) if not user_records.empty else (90.0 if user == "老公" else 50.0)
+    weight = st.number_input("今日體重 (kg)", value=last_weight, step=0.1, format="%.1f", key="w_input")
     goal = int(weight * 45)
     
+    # 進度條
     percent = (st.session_state.water_count / goal) if goal > 0 else 0
-    if percent >= 1.0:
-        st.success("🏅 今日目標達成！")
-        st.balloons()
     st.progress(min(percent, 1.0))
-    st.write(f"### 目前已喝：{st.session_state.water_count} cc ({round(percent*100,1)}%)")
+    st.write(f"### 目前已喝：{st.session_state.water_count} cc ({round(percent*100, 1)}%)")
 
-    # 按鈕區 (CSS 優化)
-    st.markdown("<style>div.stButton > button { width: 100%; border-radius: 10px; font-weight: bold; }</style>", unsafe_allow_html=True)
+    # 加水按鈕
     c1, c2, c3, c4 = st.columns(4)
     with c1: 
         if st.button("➕350"): st.session_state.water_count += 350; st.rerun()
@@ -95,37 +77,47 @@ if page == "💧 喝水紀錄":
 
     if st.button("🚀 同步喝水紀錄", use_container_width=True):
         new_row = {"日期": today_str, "使用者": user, "體重": weight, "目標水量": goal, "實際喝水": st.session_state.water_count, "達成率": round(percent, 4), "類別": "喝水"}
-        df = load_data()
-        if not df.empty: df = df[~((df["日期"] == today_str) & (df["使用者"] == user) & (df["類別"] == "喝水"))]
+        df = df[~((df["日期"] == today_str) & (df["使用者"] == user) & (df["類別"] == "喝水"))]
         updated_df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         conn.update(spreadsheet=URL, data=updated_df)
-        st.success("喝水資料已同步！")
+        st.success("同步成功！🎈")
+
+    # --- 這裡把喝水表格加回來 ---
+    st.divider()
+    st.subheader("📊 喝水歷史紀錄")
+    if not df.empty:
+        water_df = df[df["類別"] == "喝水"].copy()
+        water_df["達成率"] = pd.to_numeric(water_df["達成率"], errors='coerce') * 100
+        st.data_editor(
+            water_df[["日期", "使用者", "實際喝水", "達成率"]].sort_values("日期", ascending=False),
+            column_config={"達成率": st.column_config.ProgressColumn("達成率", format="%.1f%%", min_value=0, max_value=100)},
+            use_container_width=True, hide_index=True, disabled=True
+        )
 
 # ==================== 頁面 B：血壓紀錄 ====================
 elif page == "❤️ 血壓紀錄":
     st.title(f"❤️ {user} 血壓日誌")
-    period = st.radio("時段：", ["早晨", "夜晚"], horizontal=True)
+    period = st.radio("紀錄時段：", ["早晨", "夜晚"], horizontal=True)
     
     col1, col2, col3 = st.columns(3)
     with col1: sys = st.number_input("高壓 (SYS)", 80, 200, 120)
     with col2: dia = st.number_input("低壓 (DIA)", 40, 130, 80)
     with col3: pulse = st.number_input("心跳", 40, 200, 70)
 
-    if sys >= 140 or dia >= 90: st.warning("⚠️ 血壓偏高，請注意休息。")
-    
     if st.button("🚀 同步血壓紀錄", use_container_width=True):
         today_str = datetime.now().strftime("%Y-%m-%d")
         new_row = {"日期": today_str, "使用者": user, "時間段": period, "高壓": sys, "低壓": dia, "心跳": pulse, "類別": "血壓"}
         df = load_data()
-        if not df.empty: df = df[~((df["日期"] == today_str) & (df["使用者"] == user) & (df["時間段"] == period) & (df["類別"] == "血壓"))]
+        df = df[~((df["日期"] == today_str) & (df["使用者"] == user) & (df["時間段"] == period) & (df["類別"] == "血壓"))]
         updated_df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         conn.update(spreadsheet=URL, data=updated_df)
-        st.success("血壓紀錄已存檔！🎈")
+        st.success("血壓已存檔！")
 
-    # 顯示歷史紀錄表
     st.divider()
-    st.subheader("📊 歷史紀錄 (看診參考)")
+    st.subheader("📊 血壓歷史紀錄表")
     df = load_data()
-    if not df.empty and "類別" in df.columns:
-        bp_df = df[(df["使用者"] == user) & (df["類別"] == "血壓")].sort_values("日期", ascending=False)
+    if not df.empty:
+        bp_df = df[(df["類別"] == "血壓") & (df["使用者"] == user)].sort_values(["日期", "時間段"], ascending=False)
         st.dataframe(bp_df[["日期", "時間段", "高壓", "低壓", "心跳"]], use_container_width=True, hide_index=True)
+
+if st.button("🔄 刷新數據"): st.rerun()
