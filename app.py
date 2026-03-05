@@ -1,7 +1,7 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta  # 確保有導入 timedelta
 import plotly.express as px
 
 # --- 1. 設定網頁與背景 ---
@@ -25,14 +25,18 @@ conn = st.connection("gsheets", type=GSheetsConnection)
 def load_data():
     try:
         df = conn.read(spreadsheet=URL, ttl=0)
-        # 自動補齊欄位，防止噴錯
         for col in ["類別", "使用者", "日期", "實際喝水", "達成率", "高壓", "低壓", "時間段"]:
             if col not in df.columns: df[col] = None
         return df
     except:
         return pd.DataFrame()
 
-# --- 3. 側邊欄選單 ---
+# --- 3. 時區修正邏輯 (台灣時區 UTC+8) ---
+# 強制抓取台灣當前日期
+tw_now = datetime.utcnow() + timedelta(hours=8)
+today_str = tw_now.strftime("%Y-%m-%d")
+
+# --- 4. 側邊欄選單 ---
 with st.sidebar:
     st.title("🏠 健康選單")
     page = st.selectbox("切換功能：", ["💧 喝水紀錄", "❤️ 血壓紀錄"])
@@ -42,9 +46,7 @@ with st.sidebar:
 # ==================== 頁面 A：喝水紀錄 ====================
 if page == "💧 喝水紀錄":
     st.title(f"💧 {user} 喝水追蹤")
-    today_str = datetime.now().strftime("%Y-%m-%d")
     
-    # 讀取資料並更新 session_state
     df = load_data()
     user_today = df[(df["日期"] == today_str) & (df["使用者"] == user) & (df["類別"] == "喝水")]
     
@@ -52,26 +54,23 @@ if page == "💧 喝水紀錄":
         st.session_state.water_count = int(user_today.iloc[-1]["實際喝水"]) if not user_today.empty else 0
         st.session_state.last_user_w = user
 
-    # 體重與目標
     user_records = df[(df["使用者"] == user) & (df["類別"] == "喝水")]
     last_weight = float(user_records.iloc[-1]["體重"]) if not user_records.empty else (90.0 if user == "老公" else 50.0)
-    weight = st.number_input("今日體重 (kg)", value=last_weight, step=0.1, format="%.1f", key="w_input")
+    weight = st.number_input("今日體重 (kg)", value=last_weight, step=0.1, format="%.1f")
     goal = int(weight * 45)
     
-    # 進度條
     percent = (st.session_state.water_count / goal) if goal > 0 else 0
     st.progress(min(percent, 1.0))
     st.write(f"### 目前已喝：{st.session_state.water_count} cc ({round(percent*100, 1)}%)")
 
-    # 加水按鈕
     c1, c2, c3, c4 = st.columns(4)
     with c1: 
         if st.button("➕350"): st.session_state.water_count += 350; st.rerun()
     with c2: 
-        if st.button("➕500"): st.session_state.water_count += 500; st.rerun()
+        if st.button("➕500"): st.session_state.count = st.session_state.water_count + 500; st.session_state.water_count += 500; st.rerun()
     with c3: 
         custom = st.number_input("自定義", value=300, step=50, label_visibility="collapsed")
-        if st.button(f"➕{custom}"): st.session_state.water_count += custom; st.rerun()
+        if st.button(f"➕{custom}", key="custom_w_btn"): st.session_state.water_count += custom; st.rerun()
     with c4: 
         if st.button("🧹重置"): st.session_state.water_count = 0; st.rerun()
 
@@ -80,9 +79,8 @@ if page == "💧 喝水紀錄":
         df = df[~((df["日期"] == today_str) & (df["使用者"] == user) & (df["類別"] == "喝水"))]
         updated_df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         conn.update(spreadsheet=URL, data=updated_df)
-        st.success("同步成功！🎈")
+        st.success(f"同步成功！日期：{today_str} 🎈")
 
-    # --- 這裡把喝水表格加回來 ---
     st.divider()
     st.subheader("📊 喝水歷史紀錄")
     if not df.empty:
@@ -97,6 +95,7 @@ if page == "💧 喝水紀錄":
 # ==================== 頁面 B：血壓紀錄 ====================
 elif page == "❤️ 血壓紀錄":
     st.title(f"❤️ {user} 血壓日誌")
+    st.info(f"📅 記錄日期：{today_str}") # 讓使用者確認日期
     period = st.radio("紀錄時段：", ["早晨", "夜晚"], horizontal=True)
     
     col1, col2, col3 = st.columns(3)
@@ -105,13 +104,12 @@ elif page == "❤️ 血壓紀錄":
     with col3: pulse = st.number_input("心跳", 40, 200, 70)
 
     if st.button("🚀 同步血壓紀錄", use_container_width=True):
-        today_str = datetime.now().strftime("%Y-%m-%d")
         new_row = {"日期": today_str, "使用者": user, "時間段": period, "高壓": sys, "低壓": dia, "心跳": pulse, "類別": "血壓"}
         df = load_data()
         df = df[~((df["日期"] == today_str) & (df["使用者"] == user) & (df["時間段"] == period) & (df["類別"] == "血壓"))]
         updated_df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
         conn.update(spreadsheet=URL, data=updated_df)
-        st.success("血壓已存檔！")
+        st.success(f"血壓已存檔！日期：{today_str}")
 
     st.divider()
     st.subheader("📊 血壓歷史紀錄表")
