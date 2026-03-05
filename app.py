@@ -8,8 +8,7 @@ import plotly.express as px
 st.set_page_config(page_title="雙人雲端喝水神器", page_icon="💧", layout="centered")
 
 # --- 2. 視覺美化 CSS (含全家福背景與毛玻璃效果) ---
-bg_img_url = "https://lh3.googleusercontent.com/pw/AP1GczNM_8O96wkTb5HLFxSStz5dCsYP57_V_Pz9LsM8lNEeBZi6K1o5hq54LiGPJ_4AfYybWOBpaWLQBhLsJE1D2fsRi12xT9u5aokp_DJIIM0gG1PZ4BsG=w2400"
-
+bg_img_url = "https://lh3.googleusercontent.com/pw/AP1GczPQAeEyydw0HzXGq3cyXWggu8_yrupGiYDBYBhcYhtvubDIdpS5pG7NNYc1R59y57HU6SspjCl4BGwNxdTkWxni3jrDHqcbFNaysEdDR8ntrB2vmCGm=w2400"
 st.markdown(f"""
 <style>
 /* 全網頁背景設定 */
@@ -152,5 +151,6 @@ if not all_data.empty:
         st.plotly_chart(fig, use_container_width=True)
 
 if st.button("🔄 刷新雲端資料"): st.rerun()
+
 
 
