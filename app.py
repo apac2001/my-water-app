@@ -57,7 +57,7 @@ if page == "💧 喝水紀錄":
     user_records = df[(df["使用者"] == user) & (df["類別"] == "喝水")]
     last_weight = float(user_records.iloc[-1]["體重"]) if not user_records.empty else (90.0 if user == "老公" else 50.0)
     weight = st.number_input("今日體重 (kg)", value=last_weight, step=0.1, format="%.1f")
-    goal = int(weight * 45)
+    goal = int(weight * 40)
     
     percent = (st.session_state.water_count / goal) if goal > 0 else 0
     st.progress(min(percent, 1.0))
